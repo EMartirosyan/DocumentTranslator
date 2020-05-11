@@ -69,9 +69,7 @@
     <Compile Include="TmxWriter.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="TmxLangMap.csv">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <Content Include="TmxLangMap.csv" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="EnterpriseLibrary.TransientFaultHandling">
