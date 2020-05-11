@@ -12,19 +12,19 @@
 // // ----------------------------------------------------------------------
 
 #region Usings
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
-    using System;
-    using System.Collections;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Globalization;
-    using System.IO;
-    using System.Linq;
-    using System.Net.Http;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 #endregion
 
 namespace TranslationAssistant.TranslationServices.Core
@@ -35,11 +35,10 @@ namespace TranslationAssistant.TranslationServices.Core
         #region Static Fields
 
         private const int MillisecondsTimeout = 100;
-
-        public static event EventHandler RetryingEvent;
-
         private const int maxrequestsize = 5000;   //service size is 5000
         private const int maxelements = 100;
+
+        public static event EventHandler RetryingEvent;
         public static string CategoryID { get; set; }
         public static string AppId { get; set; }
         public static string AdvCategoryId { get; set; }
@@ -88,16 +87,12 @@ namespace TranslationAssistant.TranslationServices.Core
         /// <summary>
         /// Authentication Service URL
         /// </summary>
-        private static readonly Uri AuthServiceUrlPublic = new Uri("https://api.cognitive.microsoft.com/sts/v1.0/issueToken");
-        private static readonly Uri AuthServiceUrlGov = new Uri("https://virginia.api.cognitive.microsoft.us/sts/v1.0/issueToken");
-
         private enum AuthMode { Azure, AppId, Container, Disconnected };
         private static AuthMode authMode = AuthMode.Disconnected;
         private static string appid = null;
-
         private static readonly List<string> autoDetectStrings = new List<string>() { "auto-detect", "détection automatique" };
-
         private static bool IsInitialized = false;
+
         #endregion
 
         #region Public Methods and Operators
@@ -133,7 +128,7 @@ namespace TranslationAssistant.TranslationServices.Core
                 }
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
-                    string detectResult= await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    string detectResult = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     if (pretty)
                     {
                         using (var stringReader = new StringReader(detectResult))
@@ -149,7 +144,7 @@ namespace TranslationAssistant.TranslationServices.Core
                     {
                         return detectResult;
                     }
-                       
+
                 }
                 else
                 {
@@ -195,6 +190,7 @@ namespace TranslationAssistant.TranslationServices.Core
             public bool IsTransliterationSupported { get; set; }
             public AltTranslations[] Alternatives { get; set; }
         }
+
         public class AltTranslations
         {
             public string Language { get; set; }
@@ -202,7 +198,6 @@ namespace TranslationAssistant.TranslationServices.Core
             public bool IsTranslationSupported { get; set; }
             public bool IsTransliterationSupported { get; set; }
         }
-
 
         /// <summary>
         /// Check if the Translation service is ready to use, with a valid Azure key
@@ -273,7 +268,6 @@ namespace TranslationAssistant.TranslationServices.Core
             return returnvalue;
         }
 
-        
         /// <summary>
         /// Call once to initialize the static variables
         /// </summary>
@@ -311,7 +305,6 @@ namespace TranslationAssistant.TranslationServices.Core
             GetLanguages();
             IsInitialized = true;
         }
-
 
         private static async void GetLanguages()
         {
@@ -355,7 +348,6 @@ namespace TranslationAssistant.TranslationServices.Core
             }
             return;
         }
-
 
         /// <summary>
         /// Loads credentials from settings file.
@@ -444,14 +436,13 @@ namespace TranslationAssistant.TranslationServices.Core
             }
         }
 
-
         /// <summary>
         /// Translates a string
         /// </summary>
         /// <param name="text">String to translate</param>
-        /// <param name="from">From language</param>
-        /// <param name="to">To language</param>
-        /// <param name="contentType">Optional: Content Type: 0=plain text (default), 1=HTML</param>
+        /// <param name="from">From language name or language code. May be empty</param>
+        /// <param name="to">To language name or language code. Must be a valid language name or a valid language code</param>
+        /// <param name="contentType">Enum: ContentType plain or HTML depending on the type of string</param>
         /// <returns></returns>
         public static string TranslateString(string text, string from, string to, ContentType contentType = ContentType.plain)
         {
@@ -461,35 +452,43 @@ namespace TranslationAssistant.TranslationServices.Core
             return results[0];
         }
 
-
         /// <summary>
         /// Translates an array of strings from the from language code to the to language code.
         /// From language code can stay empty, in that case the source language is auto-detected, across all elements of the array together.
         /// </summary>
         /// <param name="texts">Array of strings to translate</param>
-        /// <param name="from">From language code. May be empty</param>
-        /// <param name="to">To language code. Must be a valid language</param>
+        /// <param name="from">From language name or language code. May be empty</param>
+        /// <param name="to">To language name or language code. Must be a valid language name or a valid language code</param>
         /// <param name="contentType">Enum: ContentType plain or HTML depending on the type of string</param>
         /// <returns></returns>
         public static string[] TranslateArray(string[] texts, string from, string to, ContentType contentType = ContentType.plain)
         {
-            string fromCode = string.Empty;
-            string toCode = string.Empty;
+            if (texts == null)
+            {
+                throw new ArgumentNullException(nameof(texts));
+            }
 
+            string fromCode;
             if (string.IsNullOrEmpty(from) || autoDetectStrings.Contains(from.ToLower(CultureInfo.InvariantCulture)))
             {
                 fromCode = string.Empty;
             }
             else
             {
-                try { fromCode = AvailableLanguages.First(t => t.Value == from).Key; }
-                catch { fromCode = from; }
+                fromCode = LanguageNameToLanguageCode(from);
+                if (string.IsNullOrEmpty(fromCode))
+                {
+                    throw new ArgumentException("Invalid 'from' language name.", nameof(from));
+                }
             }
 
-            toCode = LanguageNameToLanguageCode(to);
+            var toCode = LanguageNameToLanguageCode(to);
+            if (string.IsNullOrEmpty(toCode))
+            {
+                throw new ArgumentException("Invalid 'to' language name.", nameof(to));
+            }
 
-            string[] result = TranslateV3Async(texts, fromCode, toCode, CategoryID, contentType).Result;
-            return result;
+            return TranslateV3Async(texts, fromCode, toCode, CategoryID, contentType).Result;
         }
 
         /// <summary>
@@ -520,7 +519,6 @@ namespace TranslationAssistant.TranslationServices.Core
             return result;
         }
 
-
         /// <summary>
         /// Returns the last sentence break in the text.
         /// </summary>
@@ -531,10 +529,9 @@ namespace TranslationAssistant.TranslationServices.Core
         {
             int sum = 0;
             List<int> breakSentenceResult = await BreakSentencesAsync(text, languagecode).ConfigureAwait(false);
-            for (int i = 0; i < breakSentenceResult.Count-1; i++) sum += breakSentenceResult[i];
+            for (int i = 0; i < breakSentenceResult.Count - 1; i++) sum += breakSentenceResult[i];
             return sum;
         }
-
 
         private static bool IsCustomCategory(string categoryID)
         {
@@ -573,8 +570,6 @@ namespace TranslationAssistant.TranslationServices.Core
             }
         }
 
-
-
         // Used in the BreakSentences method.
         private class BreakSentenceResult
         {
@@ -606,8 +601,6 @@ namespace TranslationAssistant.TranslationServices.Core
                 return jsonResponse;
             }
         }
-
-
 
         /// <summary>
         /// Breaks string into sentences. The string will be cut off at maxrequestsize. 
@@ -664,7 +657,7 @@ namespace TranslationAssistant.TranslationServices.Core
         {
             if (from == to) return texts;
             bool translateindividually = false;
-            foreach(string text in texts)
+            foreach (string text in texts)
             {
                 if (text.Length >= Maxrequestsize) translateindividually = true;
             }
@@ -689,7 +682,6 @@ namespace TranslationAssistant.TranslationServices.Core
                 return await TranslateV3AsyncInternal(texts, from, to, category, contentType).ConfigureAwait(false);
             }
         }
-
 
         /// <summary>
         /// Raw function to translate an array of strings. Does not allow elements to be larger than <see cref="Maxrequestsize"/>.
@@ -868,14 +860,13 @@ namespace TranslationAssistant.TranslationServices.Core
             return resultList;
         }
 
-
         private static void WriteToTmx(string[] texts, string[] res, string from, string to, string comment)
         {
             TranslationMemory TM = new TranslationMemory();
             TranslationUnit TU = new TranslationUnit();
             TM.sourceLangID = from;
             TM.targetLangID = to;
-            for (int i=0; i<texts.Length; i++)
+            for (int i = 0; i < texts.Length; i++)
             {
                 TU.strSource = texts[i];
                 TU.strTarget = res[i];
@@ -887,8 +878,6 @@ namespace TranslationAssistant.TranslationServices.Core
             TM.WriteToTmx(TmxFileName);
             return;
         }
-
-
 
         #endregion
     }
