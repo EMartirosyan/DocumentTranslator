@@ -144,7 +144,7 @@ namespace TranslationAssistant.DocumentTranslationInterface.ViewModel
             //Set the Account values and save.
             TranslationServices.Core.TranslationServiceFacade.AzureKey = TranslationServices.Core.TranslationServiceFacade.AzureKey.Trim();
             TranslationServices.Core.TranslationServiceFacade.CategoryID = this.adv_categoryID.Trim();
-            TranslationServices.Core.TranslationServiceFacade.SaveCredentials();
+            TranslationServices.Core.TranslationServiceFacade.SaveUserSettings();
             TranslationServices.Core.TranslationServiceFacade.Initialize();
             
             if (await TranslationServices.Core.TranslationServiceFacade.IsTranslationServiceReadyAsync()) { 

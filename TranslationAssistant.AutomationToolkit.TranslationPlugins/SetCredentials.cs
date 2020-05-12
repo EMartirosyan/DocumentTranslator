@@ -109,7 +109,7 @@ namespace TranslationAssistant.AutomationToolkit.TranslationPlugins
             {
                 TranslationServiceFacade.AzureKey = this.AzureKey.ValueString;
                 TranslationServiceFacade.CategoryID = this.categoryID.ValueString;
-                TranslationServiceFacade.SaveCredentials();
+                TranslationServiceFacade.SaveUserSettings();
             }
             catch (Exception ex)
             {

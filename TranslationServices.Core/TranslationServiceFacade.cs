@@ -29,40 +29,43 @@ using System.Threading.Tasks;
 
 namespace TranslationAssistant.TranslationServices.Core
 {
-
     public static partial class TranslationServiceFacade
     {
-        #region Static Fields
+        #region Parameters and settings
 
-        private const int MillisecondsTimeout = 100;
-        private const int maxrequestsize = 5000;   //service size is 5000
-        private const int maxelements = 100;
-
-        public static event EventHandler RetryingEvent;
         public static string CategoryID { get; set; }
+
         public static string AppId { get; set; }
+
         public static string AdvCategoryId { get; set; }
+
         public static bool UseAdvancedSettings { get; set; }
+
         public static bool UseAzureGovernment { get; set; }
+
         /// <summary>
         /// Holds the setting whether to use a container offline
         /// </summary>
         public static bool UseCustomEndpoint { get; set; }
+
         /// <summary>
         /// Holds the value of the custom endpoint, the container
         /// </summary>
         public static string CustomEndpointUrl { get; set; }
+
         public static bool ShowExperimental { get; set; }
 
         /// <summary>
         /// Holds the Azure subscription key
         /// </summary>
         public static string AzureKey { get; set; }
+
         /// <summary>
         /// Allows to set the file name to save the TMX under.
         /// No effect if CreateTMXOnTranslate is not set.
-        /// </summary>
+        /// </summary>        
         public static string TmxFileName { get; set; } = "_DocumentTranslator.TMX";
+
         /// <summary>
         /// Create a TMX file containing source and target while translating. 
         /// </summary>
@@ -77,25 +80,39 @@ namespace TranslationAssistant.TranslationServices.Core
         /// End point address for V3 of the Translator API
         /// </summary>
         public static string EndPointAddressV3Public { get; set; } = "https://api.cognitive.microsofttranslator.com";
+
         public static string EndPointAddressV3Gov { get; set; } = "https://api.cognitive.microsofttranslator.us";
-        public static Dictionary<string, string> AvailableLanguages { get; } = new Dictionary<string, string>();
-        public static int Maxrequestsize { get => maxrequestsize; }
-        public static int Maxelements { get => maxelements; }
-
-        public enum ContentType { plain, HTML };
-
-        /// <summary>
-        /// Authentication Service URL
-        /// </summary>
-        private enum AuthMode { Azure, AppId, Container, Disconnected };
-        private static AuthMode authMode = AuthMode.Disconnected;
-        private static string appid = null;
-        private static readonly List<string> autoDetectStrings = new List<string>() { "auto-detect", "détection automatique" };
-        private static bool IsInitialized = false;
 
         #endregion
 
-        #region Public Methods and Operators
+        public static event EventHandler RetryingEvent;
+
+        public static Dictionary<string, string> AvailableLanguages { get; } = new Dictionary<string, string>();
+
+        public static int Maxrequestsize { get => maxrequestsize; }
+
+        public static int Maxelements { get => maxelements; }
+
+        public class DetectResult
+        {
+            public string Language { get; set; }
+            public float Score { get; set; }
+            public bool IsTranslationSupported { get; set; }
+            public bool IsTransliterationSupported { get; set; }
+            public AltTranslations[] Alternatives { get; set; }
+        }
+
+        public class AltTranslations
+        {
+            public string Language { get; set; }
+            public float Score { get; set; }
+            public bool IsTranslationSupported { get; set; }
+            public bool IsTransliterationSupported { get; set; }
+        }
+
+        public enum ContentType { plain, HTML };
+
+        #region Methods and Operators
 
         /// <summary>
         /// Detect the languages of the input
@@ -182,23 +199,6 @@ namespace TranslationAssistant.TranslationServices.Core
             return deserializedOutput;
         }
 
-        public class DetectResult
-        {
-            public string Language { get; set; }
-            public float Score { get; set; }
-            public bool IsTranslationSupported { get; set; }
-            public bool IsTransliterationSupported { get; set; }
-            public AltTranslations[] Alternatives { get; set; }
-        }
-
-        public class AltTranslations
-        {
-            public string Language { get; set; }
-            public float Score { get; set; }
-            public bool IsTranslationSupported { get; set; }
-            public bool IsTransliterationSupported { get; set; }
-        }
-
         /// <summary>
         /// Check if the Translation service is ready to use, with a valid Azure key
         /// </summary>
@@ -271,24 +271,31 @@ namespace TranslationAssistant.TranslationServices.Core
         /// <summary>
         /// Call once to initialize the static variables
         /// </summary>
-        public static void Initialize(bool force = false)
+        public static void Initialize(bool force = false, bool loadSettings = true)
         {
-            if (IsInitialized && !force) return;
-            LoadCredentials();
-            if (String.IsNullOrEmpty(AzureKey))
+            if (IsInitialized && !force)
+            {
+                return;
+            }
+
+            if (loadSettings)
+            {
+                LoadUserSettings();
+            }
+
+            if (string.IsNullOrEmpty(AzureKey))
             {
                 if (UseCustomEndpoint == false)
                 {
-                    Exception CredentialsMissingException = new CredentialsMissingException(Properties.Resources.NotConnectError);
-                    throw CredentialsMissingException;
+                    throw new CredentialsMissingException(Properties.Resources.NotConnectError);
                 }
                 authMode = AuthMode.Disconnected;
             }
-
             if (UseCustomEndpoint)
             {
                 authMode = AuthMode.Container;
             }
+
             //Inspect the given Azure Key to see if this is host with appid auth
             string[] AuthComponents = AzureKey.Split('?');
             if (AuthComponents.Length > 1)
@@ -302,7 +309,9 @@ namespace TranslationAssistant.TranslationServices.Core
                 }
                 else return;
             }
+
             GetLanguages();
+
             IsInitialized = true;
         }
 
@@ -353,7 +362,7 @@ namespace TranslationAssistant.TranslationServices.Core
         /// Loads credentials from settings file.
         /// Doesn't need to be public, because it is called during Initialize();
         /// </summary>
-        private static void LoadCredentials()
+        private static void LoadUserSettings()
         {
             AzureKey = Properties.Settings.Default.AzureKey;
             CategoryID = Properties.Settings.Default.CategoryID;
@@ -369,7 +378,7 @@ namespace TranslationAssistant.TranslationServices.Core
         /// <summary>
         /// Saves credentials Azure Key and categoryID to the personalized settings file.
         /// </summary>
-        public static void SaveCredentials()
+        public static void SaveUserSettings()
         {
             Properties.Settings.Default.AzureKey = AzureKey;
             Properties.Settings.Default.CategoryID = CategoryID;
@@ -568,19 +577,6 @@ namespace TranslationAssistant.TranslationServices.Core
                 Exception CredentialsMissingException = new CredentialsMissingException(Properties.Resources.NotConnectError);
                 throw CredentialsMissingException;
             }
-        }
-
-        // Used in the BreakSentences method.
-        private class BreakSentenceResult
-        {
-            public int[] SentLen { get; set; }
-            public DetectedLanguage DetectedLanguage { get; set; }
-        }
-
-        private class DetectedLanguage
-        {
-            public string Language { get; set; }
-            public float Score { get; set; }
         }
 
         public static async Task<string> Dictionary(string text, string from, string to)
@@ -880,5 +876,28 @@ namespace TranslationAssistant.TranslationServices.Core
         }
 
         #endregion
+
+        // Used in the BreakSentences method.
+        private class BreakSentenceResult
+        {
+            public int[] SentLen { get; set; }
+            public DetectedLanguage DetectedLanguage { get; set; }
+        }
+
+        private class DetectedLanguage
+        {
+            public string Language { get; set; }
+            public float Score { get; set; }
+        }
+
+        private enum AuthMode { Azure, AppId, Container, Disconnected };
+        private static AuthMode authMode = AuthMode.Disconnected;
+        private static string appid = null;
+        private static readonly List<string> autoDetectStrings = new List<string>() { "auto-detect", "détection automatique" };
+        private static bool IsInitialized = false;
+
+        private const int MillisecondsTimeout = 100;
+        private const int maxrequestsize = 5000;   //service size is 5000
+        private const int maxelements = 100;
     }
 }

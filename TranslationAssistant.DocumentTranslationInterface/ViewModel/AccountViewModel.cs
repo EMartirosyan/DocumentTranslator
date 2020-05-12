@@ -227,7 +227,7 @@ namespace TranslationAssistant.DocumentTranslationInterface.ViewModel
             TranslationServices.Core.TranslationServiceFacade.UseCustomEndpoint = this.useCustomEndpoint;
             TranslationServices.Core.TranslationServiceFacade.CustomEndpointUrl = this.customEndpointUrl;
             TranslationServices.Core.TranslationServiceFacade.ShowExperimental = this.showExperimental;
-            TranslationServices.Core.TranslationServiceFacade.SaveCredentials();
+            TranslationServices.Core.TranslationServiceFacade.SaveUserSettings();
             try
             {
                 TranslationServices.Core.TranslationServiceFacade.Initialize(true);
